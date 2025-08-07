@@ -72,6 +72,7 @@ public class SalesReservation extends Transaction {
             Master().setBranchCode(poGRider.getBranchCode());
             Master().setIndustryID(psIndustryId);
             Master().setCompanyID(psCompanyId);
+            Master().setCategoryCode(psCategoryCd);
             Master().setTransactionDate(poGRider.getServerDate());
             Master().setTransactionStatus(Sales_Reservation_Static.OPEN);
 
@@ -107,6 +108,7 @@ public class SalesReservation extends Transaction {
     }
 
     public JSONObject OpenTransaction(String transactionNo) throws CloneNotSupportedException, SQLException, GuanzonException {
+        resetMaster();
         resetOthers();
         Detail().clear();
         return openTransaction(transactionNo);
@@ -357,15 +359,20 @@ public class SalesReservation extends Transaction {
             throws SQLException,
             GuanzonException {
         poJSON = new JSONObject();
+        if(value.isEmpty()){
+             Master().setClientID(null);
+        }
 
         Client object = new ClientControllers(poGRider, logwrapr).Client();
         object.Master().setRecordStatus(RecordStatus.ACTIVE);
-//        object.Master().setClientType(Master().get());
+        object.Master().setClientType("1");
         poJSON = object.Master().searchRecord(value, byCode);
         if ("success".equals((String) poJSON.get("result"))) {
             Master().setClientID(object.Master().getModel().getClientId());
-            Master().setAddressID("address"); //TODO
-            Master().setContactID("contact"); //TODO
+            System.out.println("ADDRESS : " + object.ClientAddress().getModel().getAddressId());
+            Master().setAddressID(object.ClientAddress().getModel().getAddressId());
+            System.out.println("SETTED ADDRESS : " +  Master().getAddressID());
+//            Master().setContactID(object.Mobile().getModel().getClientId());
         }
 
         return poJSON;
@@ -455,66 +462,7 @@ public class SalesReservation extends Transaction {
             return poJSON;
         }
     }
-
-    public JSONObject SearchTransactionForDVHistory(String fsValue, String fsRefNo, String fsSuppPayeeID) throws CloneNotSupportedException, SQLException, GuanzonException {
-        poJSON = new JSONObject();
-        String lsTransStat = "";
-        if (psTranStat.length() > 1) {
-            for (int lnCtr = 0; lnCtr <= psTranStat.length() - 1; lnCtr++) {
-                lsTransStat += ", " + SQLUtil.toSQL(Character.toString(psTranStat.charAt(lnCtr)));
-            }
-            lsTransStat = " AND a.cTranStat IN (" + lsTransStat.substring(2) + ")";
-        } else {
-            lsTransStat = " AND a.cTranStat = " + SQLUtil.toSQL(psTranStat);
-        }
-
-        initSQL();
-
-        String lsFilterCondition = String.join(" AND ",
-                " a.sIndstCdx = " + SQLUtil.toSQL(Master().getIndustryID()),
-                " a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID()),
-                " a.sBranchCd = " + SQLUtil.toSQL(poGRider.getBranchCode()),
-                " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsRefNo),
-                " a.sPayeeIDx LIKE " + SQLUtil.toSQL("%" + fsSuppPayeeID));
-
-        String lsSQL = MiscUtil.addCondition(SQL_BROWSE, lsFilterCondition);
-        if (!psTranStat.isEmpty()) {
-            lsSQL = lsSQL + lsTransStat;
-        }
-
-        lsSQL = lsSQL + " GROUP BY a.sTransNox";
-        System.out.println("SQL EXECUTED xxx : " + lsSQL);
-        poJSON = ShowDialogFX.Browse(poGRider,
-                lsSQL,
-                fsValue,
-                "Transaction No»Transaction Date»Branch»Supplier",
-                "a.sTransNox»a.dTransact»c.sBranchNm»supplier",
-                "a.sTransNox»a.dTransact»IFNULL(c.sBranchNm, '')»IFNULL(e.sCompnyNm, '')",
-                1);
-
-        if (poJSON != null) {
-            return OpenTransaction((String) poJSON.get("sTransNox"));
-        } else {
-            poJSON = new JSONObject();
-            poJSON.put("result", "error");
-            poJSON.put("message", "No record loaded.");
-            return poJSON;
-        }
-    }
-
-//    public JSONObject SearchBanks(String value, boolean byCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
-//        Banks object = new ParamControllers(poGRider, logwrapr).Banks();
-//        object.setRecordStatus("1");
-//
-//        poJSON = object.searchRecord(value, byCode);
-//
-//        if ("success".equals((String) poJSON.get("result"))) {
-//            CheckPayments().getModel().setBankID(object.getModel().getBankID());
-//        }
-//
-//        return poJSON;
-//    }
-
+    
     /*End - Search Master References*/
     @Override
     public String getSourceCode() {
@@ -530,10 +478,7 @@ public class SalesReservation extends Transaction {
     public Model_Sales_Reservation_Detail Detail(int row) {
         return (Model_Sales_Reservation_Detail) paDetail.get(row);
     }
-
     
-    
-
     @Override
     public JSONObject willSave() throws SQLException, GuanzonException, CloneNotSupportedException {
 
@@ -719,17 +664,37 @@ public class SalesReservation extends Transaction {
                     poJSON.put("message", "No records found.");
                     return poJSON;
                 }
-
+                
                 detailCount = salesInquiry.getDetailCount();
 //                String currentPayeeID = salesInquiry.Master().getPayeeID();
 
                 for (int i = 0; i < detailCount; i++) {
+                    if(salesInquiry.Detail(i).getStockId() == null || salesInquiry.Detail(i).getStockId().isEmpty()){
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Stock ID is not yet available");
+                        return poJSON;
+                    }
+                    if (!Master().getSourceNo().isEmpty()){
+                        if (!Master().getSourceNo().equals(salesInquiry.Master().getTransactionNo())){
+                            poJSON.put("ischange", "true");
+                             poJSON.put("result", "error");
+                             poJSON.put("message", "Existing data will be cleared when adding a new inquiry or quotation. \n"
+                                     + " Do you want to proceed?");
+                             return poJSON;
+                        }
+                    }
+                    if(salesInquiry.Detail(i).getStockId().equals(Detail(i).getStockID())){
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Stock ID is already exist in the detail");
+                        return poJSON;
+                    }
                     Master().setClientID(salesInquiry.Master().getClientId());
                     Master().setAddressID(salesInquiry.Master().getAddressId());
                     Master().setContactID(salesInquiry.Master().getContactId());
                     Master().setSourceNo(salesInquiry.Master().getTransactionNo());
                     Master().setSourceCode(salesInquiry.Master().getSourceCode());
                    
+                    
                     AddDetail();
                     int newIndex = getDetailCount() - 1;
                     Detail(newIndex).setStockID(salesInquiry.Detail(i).getStockId());  
@@ -1285,7 +1250,11 @@ public class SalesReservation extends Transaction {
 //        return poJSON;
 //    }
     
-
+    public void resetMaster() {
+        poMaster = new SalesReservationModels(poGRider).Sales_Reservation_Master();
+        Master().setIndustryID(psIndustryId);
+        Master().setCompanyID(psCompanyId);
+    }
     public void resetOthers() throws SQLException, GuanzonException {
 //        checkPayments = new CashflowControllers(poGRider, logwrapr).CheckPayments();
 //        Payees = new CashflowControllers(poGRider, logwrapr).Payee();

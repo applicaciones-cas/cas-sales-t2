@@ -15,6 +15,7 @@ import org.guanzon.appdriver.constant.EditMode;
 import org.guanzon.cas.client.model.Model_Client_Address;
 import org.guanzon.cas.client.model.Model_Client_Master;
 import org.guanzon.cas.client.model.Model_Client_Mobile;
+import org.guanzon.cas.client.services.ClientModels;
 import org.guanzon.cas.parameter.model.Model_Branch;
 import org.guanzon.cas.parameter.model.Model_Company;
 import org.guanzon.cas.parameter.model.Model_Industry;
@@ -53,6 +54,8 @@ public class Model_Sales_Reservation_Master extends Model {
             poEntity.updateObject("nAmtPaidx", Sales_Reservation_Static.DefaultValues.default_zero_amount_double);
             poEntity.updateObject("nAppliedx", Sales_Reservation_Static.DefaultValues.default_zero_amount_double);
             poEntity.updateString("cTranStat", Sales_Reservation_Static.OPEN);
+            
+            poEntity.updateNull("dEntryDte");
 
             poEntity.insertRow();
             poEntity.moveToCurrentRow();
@@ -60,6 +63,11 @@ public class Model_Sales_Reservation_Master extends Model {
             poEntity.absolute(1);
             ID = "sTransNox";
 
+            ClientModels modelClient = new ClientModels(poGRider);
+            poClientMaster = modelClient.ClientMaster();
+            poClientAddress = modelClient.ClientAddress();
+//            poAPClient = model.ClientMaster();
+            
             ParamModels model = new ParamModels(poGRider);
             poBranch = model.Branch();
             poCompany = model.Company();
@@ -381,6 +389,26 @@ public class Model_Sales_Reservation_Master extends Model {
         } else {
             poClientMaster.initialize();
             return poClientMaster;
+        }
+    }
+    public Model_Client_Address Client_Address() throws SQLException, GuanzonException {
+        if (!"".equals((String) getValue("sClientID"))) {
+            if (poClientAddress.getEditMode() == EditMode.READY
+                    && poClientAddress.getClientId().equals((String) getValue("sAddressID"))) {
+                return poClientAddress;
+            } else {
+                poJSON = poClientAddress.openRecord((String) getValue("sClientID"));
+
+                if ("success".equals((String) poJSON.get("result"))) {
+                    return poClientAddress;
+                } else {
+                    poClientAddress.initialize();
+                    return poClientAddress;
+                }
+            }
+        } else {
+            poClientAddress.initialize();
+            return poClientAddress;
         }
     }
 
