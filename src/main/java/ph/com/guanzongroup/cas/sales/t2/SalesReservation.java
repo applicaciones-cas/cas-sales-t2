@@ -1,20 +1,12 @@
 package ph.com.guanzongroup.cas.sales.t2;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.script.ScriptException;
 import org.guanzon.appdriver.agent.ShowDialogFX;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.agent.services.Transaction;
@@ -22,16 +14,13 @@ import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.EditMode;
-import org.guanzon.appdriver.constant.Logical;
 import org.guanzon.appdriver.constant.RecordStatus;
 import org.guanzon.appdriver.constant.UserRight;
 import org.guanzon.appdriver.iface.GValidator;
 import org.guanzon.cas.client.Client;
-import org.guanzon.cas.client.Client_Master;
 import org.guanzon.cas.client.services.ClientControllers;
 import org.guanzon.cas.inv.Inventory;
 import org.guanzon.cas.inv.services.InvControllers;
-import org.guanzon.cas.parameter.Banks;
 import org.guanzon.cas.parameter.Branch;
 import org.guanzon.cas.parameter.services.ParamControllers;
 import org.json.simple.JSONArray;
@@ -44,7 +33,6 @@ import ph.com.guanzongroup.cas.sales.status.Sales_Reservation_Static;
 import ph.com.guanzongroup.cas.sales.t1.SalesInquiry;
 import ph.com.guanzongroup.cas.sales.t1.services.SalesControllers;
 import ph.com.guanzongroup.cas.sales.validator.Sales_Reservation_Validator_Factory;
-import ph.com.guanzongroup.cas.sales.validator.Sales_Reservation_Validator_MP;
 
 public class SalesReservation extends Transaction {
 
@@ -410,7 +398,7 @@ public class SalesReservation extends Transaction {
     }
 
 
-    public JSONObject SearchTransaction(String fsValue, String fsClientID) throws CloneNotSupportedException, SQLException, GuanzonException {
+    public JSONObject SearchTransaction(String fsValue) throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsTransStat = "";
         String lsBranch = "";
@@ -430,11 +418,17 @@ public class SalesReservation extends Transaction {
         
         String lsSQL = MiscUtil.addCondition(SQL_BROWSE, lsFilterCondition);
         
-        if(fsClientID.isEmpty()||fsClientID==null){
-            lsSQL = lsSQL +  " AND d.sCompnyNm LIKE " + SQLUtil.toSQL("%" + fsValue + "%");
+        if (!fsValue.isEmpty()){
+            if(Master().getClientID() == null){
+                lsSQL = lsSQL +  " AND d.sCompnyNm LIKE " + SQLUtil.toSQL("%" + fsValue + "%");
+            }else{
+                lsSQL = lsSQL +  " AND a.sClientID = " + SQLUtil.toSQL( Master().getClientID());
+            }
         }else{
-            lsSQL = lsSQL +  " AND a.sClientID = " + SQLUtil.toSQL( fsClientID);
+         lsSQL = lsSQL +  " AND d.sCompnyNm LIKE " + SQLUtil.toSQL("%" + fsValue + "%");
         }
+        
+        
         
         if (!psTranStat.isEmpty()) {
             lsSQL = lsSQL + lsTransStat;
@@ -496,10 +490,20 @@ public class SalesReservation extends Transaction {
             if (quantityObj != null && stockIDObj != null) {
                 double quantity = ((Number) quantityObj).doubleValue();
                 String stockID = (String) stockIDObj;
-
+                
+                if (!stockID.isEmpty() && quantity == 0.00) {
+                    poJSON.put("result", "error");
+                    poJSON.put("message", "Quantity must be greater than 0 for the given stock.");
+                    return poJSON;
+                }
                 // Remove only items with empty stock ID or zero quantity
                 if (stockID.isEmpty() || quantity <= 0.00) {
                     detail.remove();
+                }
+                if (getDetailCount() == 0) {
+                    poJSON.put("result", "error");
+                    poJSON.put("message", "Reservation cannot be saved without any detail. Please add an item.");
+                    return poJSON;
                 }
             } else {
                 // Handle the case where the values are null
@@ -512,6 +516,7 @@ public class SalesReservation extends Transaction {
            Detail(lnCtr).setEntryNo(lnCtr + 1);
            Detail(lnCtr).setModifiedDate(poGRider.getServerDate());
         }
+       Master().setModifiedDate(poGRider.getServerDate());
        poJSON.put("result", "success");
        return poJSON;
     }

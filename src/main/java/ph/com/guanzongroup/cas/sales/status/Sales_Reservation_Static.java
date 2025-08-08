@@ -29,5 +29,13 @@ public class Sales_Reservation_Static {
         public static final String source_inquiry = "Inquiry";
         public static final String source_qoutation = "Qoutation";
     }
+    
+     public static class highlighter {
+         public static final String default_default = "0";
+        public static final String default_blue = "1";
+        public static final String default_green = "2";
+        public static final String default_red = "3";
+        public static final String default_orange = "4";
+    }
 
 }				
