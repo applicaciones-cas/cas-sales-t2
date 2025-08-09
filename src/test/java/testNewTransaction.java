@@ -75,7 +75,7 @@ public class testNewTransaction {
                         Assert.assertEquals(poSalesReservation.SalesReservation().Master().getBranchCode(), branchCd);
                     poSalesReservation.SalesReservation().Master().setTransactionDate(poApp.getServerDate()); 
                         Assert.assertEquals(poSalesReservation.SalesReservation().Master().getTransactionDate(), poApp.getServerDate());
-                    poSalesReservation.SalesReservation().Master().setExpectedDateDate(poApp.getServerDate()); 
+                    poSalesReservation.SalesReservation().Master().setExpectedDate(poApp.getServerDate()); 
                         Assert.assertEquals(poSalesReservation.SalesReservation().Master().getExpectedDate(), poApp.getServerDate());
                     poSalesReservation.SalesReservation().Master().setClientID(ClientID);
                         Assert.assertEquals(poSalesReservation.SalesReservation().Master().getClientID(), ClientID);

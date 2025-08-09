@@ -6,6 +6,7 @@ package ph.com.guanzongroup.cas.sales.model;
 
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
@@ -43,11 +44,18 @@ public class Model_Sales_Reservation_Master extends Model {
 
             poEntity.last();
             poEntity.moveToInsertRow();
+            
+            Date dTransact = SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE);
+            poEntity.updateObject("dTransact", dTransact);
 
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(dTransact);
+            cal.add(Calendar.MONTH, 1);
+            
             MiscUtil.initRowSet(poEntity);
             poEntity.updateObject("dTransact", SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE));
-            poEntity.updateObject("dTransact", SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE));
-            poEntity.updateObject("dExpected", SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE));
+            poEntity.updateObject("dExpected", SQLUtil.toDate(xsDateShort(cal.getTime()), SQLUtil.FORMAT_SHORT_DATE));
             poEntity.updateObject("nEntryNox", Sales_Reservation_Static.DefaultValues.default_zero_integer);
             poEntity.updateObject("nTranTotl", Sales_Reservation_Static.DefaultValues.default_zero_amount_double);            
             poEntity.updateObject("nRefundxx", Sales_Reservation_Static.DefaultValues.default_zero_amount_double);
@@ -134,7 +142,7 @@ public class Model_Sales_Reservation_Master extends Model {
         return (Date) getValue("dTransact");
     }
     
-    public JSONObject setExpectedDateDate(Date transactionDate) {
+    public JSONObject setExpectedDate(Date transactionDate) {
         return setValue("dExpected", transactionDate);
     }
 

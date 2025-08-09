@@ -22,6 +22,7 @@ import org.guanzon.cas.client.services.ClientControllers;
 import org.guanzon.cas.inv.Inventory;
 import org.guanzon.cas.inv.services.InvControllers;
 import org.guanzon.cas.parameter.Branch;
+import org.guanzon.cas.parameter.Brand;
 import org.guanzon.cas.parameter.services.ParamControllers;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -357,12 +358,63 @@ public class SalesReservation extends Transaction {
         poJSON = object.Master().searchRecord(value, byCode);
         if ("success".equals((String) poJSON.get("result"))) {
             Master().setClientID(object.Master().getModel().getClientId());
-            System.out.println("ADDRESS : " + object.ClientAddress().getModel().getAddressId());
-            Master().setAddressID(object.ClientAddress().getModel().getAddressId());
-            System.out.println("SETTED ADDRESS : " +  Master().getAddressID());
 //            Master().setContactID(object.Mobile().getModel().getClientId());
         }
 
+        return poJSON;
+    }
+    public JSONObject SearchBrand(String value, boolean byCode, int row) throws ExceptionInInitializerError, SQLException, GuanzonException {
+        Brand brand = new ParamControllers(poGRider, logwrapr).Brand();
+        brand.getModel().setRecordStatus(RecordStatus.ACTIVE);
+
+        poJSON = brand.searchRecord(value, byCode, Master().getIndustryID());
+
+        if ("success".equals((String) poJSON.get("result"))) {
+            Detail(row).setBrandId(brand.getModel().getBrandId());
+        }
+
+        return poJSON;
+    }
+    
+    
+    public JSONObject SearchModel(String value, boolean byCode, int row)
+            throws SQLException, GuanzonException, NullPointerException, CloneNotSupportedException {
+        Inventory object = new InvControllers(poGRider, logwrapr).Inventory();
+        object.getModel().setRecordStatus(RecordStatus.ACTIVE);
+
+        String brand = (Detail(row).getBrandId() != null && !Detail(row).getBrandId().isEmpty()) ? Detail(row).getBrandId() : null;
+        String industry = Master().getIndustryID().isEmpty() ? null : Master().getIndustryID();
+        String category = Master().getCategoryCode();
+
+        poJSON = object.searchRecord(
+                value,
+                byCode,
+                 null,
+                brand,
+                industry,
+                category
+        );
+
+        if ("success".equals((String) poJSON.get("result"))) {
+            for (int lnRow = 0; lnRow <= getDetailCount() - 1; lnRow++) {
+                if (lnRow != row) {
+                    if ((Detail(lnRow).getStockID().equals("") || Detail(lnRow).getStockID() == null)
+                            || (Detail(lnRow).getStockID().equals(object.getModel().getStockId()))) {
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Barcode: " + object.getModel().getDescription() + " already exist in table at row " + (lnRow + 1) + ".");
+                        poJSON.put("tableRow", lnRow);
+                        return poJSON;
+                    }
+                }
+            }
+            
+            Detail(row).setStockID(object.getModel().getStockId());
+            Detail(row).setUnitPrice(object.getModel().getCost().doubleValue());
+            if(row == getDetailCount() - 1){
+                AddDetail();
+            }
+//          Detail(row).setOldPrice(object.getModel().getCost().doubleValue());
+        }
         return poJSON;
     }
 
@@ -491,12 +543,6 @@ public class SalesReservation extends Transaction {
                 double quantity = ((Number) quantityObj).doubleValue();
                 String stockID = (String) stockIDObj;
                 
-                if (!stockID.isEmpty() && quantity == 0.00) {
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Quantity must be greater than 0 for the given stock.");
-                    return poJSON;
-                }
-                // Remove only items with empty stock ID or zero quantity
                 if (stockID.isEmpty() || quantity <= 0.00) {
                     detail.remove();
                 }
@@ -505,6 +551,8 @@ public class SalesReservation extends Transaction {
                     poJSON.put("message", "Reservation cannot be saved without any detail. Please add an item.");
                     return poJSON;
                 }
+
+                
             } else {
                 // Handle the case where the values are null
                 detail.remove();
