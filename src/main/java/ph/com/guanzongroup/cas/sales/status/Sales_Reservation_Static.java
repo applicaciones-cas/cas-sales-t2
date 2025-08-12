@@ -6,12 +6,13 @@ public class Sales_Reservation_Static {
     public static final  String CONFIRMED = "1";
     public static final  String PAID = "2";
     public static final  String CANCELLED = "3";
+    public static final  String VOID = "3";
       
     public static class String_Status {
         public static final String OPEN = "OPEN";
         public static final  String CONFIRMED = "CONFIRMED";
         public static final  String PAID = "PAID";
-        public static final  String CANCELLED = "CANCELLED";
+        public static final  String VOID = "CANCELLED";
     }
 
     public static class DefaultValues {

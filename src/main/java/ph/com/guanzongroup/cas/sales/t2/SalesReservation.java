@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.guanzon.appdriver.agent.ShowDialogFX;
+import org.guanzon.appdriver.agent.ShowMessageFX;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.agent.services.Transaction;
 import org.guanzon.appdriver.base.GuanzonException;
@@ -123,12 +124,12 @@ public class SalesReservation extends Transaction {
 
         if (lsStatus.equals((String) poMaster.getValue("cTranStat"))) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already confirmed.");
+            poJSON.put("message", "Transaction was already cancelled.");
             return poJSON;
         }
 
         //validator
-        poJSON = isEntryOkay(Sales_Reservation_Static.CONFIRMED);
+        poJSON = isEntryOkay(Sales_Reservation_Static.CANCELLED);
         if (!"success".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
@@ -163,6 +164,66 @@ public class SalesReservation extends Transaction {
 //            return poJSON;
 //        }
 
+        poGRider.commitTrans();
+
+        poJSON = new JSONObject();
+        poJSON.put("result", "success");
+
+        if (lbConfirm) {
+            poJSON.put("message", "Transaction canceelled successfully.");
+        } else {
+            poJSON.put("message", "Transaction canceelled request submitted successfully.");
+        }
+
+        return poJSON;
+    }
+
+    public JSONObject VoidTransaction(String remarks) throws ParseException, SQLException, CloneNotSupportedException, GuanzonException {
+        poJSON = new JSONObject();
+
+        String lsStatus = Sales_Reservation_Static.VOID;
+        boolean lbConfirm = true;
+
+        if (getEditMode() != EditMode.READY) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "No transacton was loaded.");
+            return poJSON;
+        }
+
+        if (lsStatus.equals((String) poMaster.getValue("cTranStat"))) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "Transaction was already voided.");
+            return poJSON;
+        }
+
+        //validator
+        poJSON = isEntryOkay(Sales_Reservation_Static.VOID);
+        if (!"success".equals((String) poJSON.get("result"))) {
+            return poJSON;
+        }
+
+        if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+            poJSON = ShowDialogFX.getUserApproval(poGRider);
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            } else {
+                if (Integer.parseInt(poJSON.get("nUserLevl").toString()) <= UserRight.ENCODER) {
+                    poJSON.put("result", "error");
+                    poJSON.put("message", "User is not an authorized approving officer..");
+                    return poJSON;
+                }
+            }
+        }
+
+        //check  the user level again then if he/she allow to approve
+        poGRider.beginTrans("UPDATE STATUS", "VoidTransaction", SOURCE_CODE, Master().getTransactionNo());
+
+        poJSON = statusChange(poMaster.getTable(), (String) poMaster.getValue("sTransNox"), remarks, lsStatus, !lbConfirm, true);
+        if (!"success".equals((String) poJSON.get("result"))) {
+            poGRider.rollbackTrans();
+            return poJSON;
+        }
+        
         poGRider.commitTrans();
 
         poJSON = new JSONObject();
@@ -818,6 +879,15 @@ public class SalesReservation extends Transaction {
 //                String currentPayeeID = salesInquiry.Master().getPayeeID();
 
                 for (int i = 0; i < detailCount; i++) {
+                    String salesStockId = salesInquiry.Detail(i).getStockId();
+
+                    for (int j = 0; j < getDetailCount(); j++) {
+                        if (salesStockId.equals(Detail(j).getStockID())) {
+                            poJSON.put("result", "error");
+                            poJSON.put("message", "Stock ID is already exist in the detail");
+                            return poJSON;
+                        }
+                    }
                     if(salesInquiry.Detail(i).getStockId() == null || salesInquiry.Detail(i).getStockId().isEmpty()){
                         poJSON.put("result", "error");
                         poJSON.put("message", "Stock ID is not yet available");
@@ -832,11 +902,7 @@ public class SalesReservation extends Transaction {
                              return poJSON;
                         }
                     }
-                    if(salesInquiry.Detail(i).getStockId().equals(Detail(i).getStockID())){
-                        poJSON.put("result", "error");
-                        poJSON.put("message", "Stock ID is already exist in the detail");
-                        return poJSON;
-                    }
+                    
                     Master().setClientID(salesInquiry.Master().getClientId());
                     Master().setAddressID(salesInquiry.Master().getAddressId());
                     Master().setContactID(salesInquiry.Master().getContactId());
@@ -849,7 +915,7 @@ public class SalesReservation extends Transaction {
                     Detail(newIndex).setStockID(salesInquiry.Detail(i).getStockId());  
                     Detail(newIndex).setUnitPrice(salesInquiry.Detail(i).Inventory().getCost().doubleValue());  
                     Detail(newIndex).setMinimumDown(salesInquiry.Detail(i).Inventory().getCost().doubleValue());  
-                    Detail(newIndex).setClassify(salesInquiry.Detail(i).InventoryMaster().getInventoryClassification());
+                    Detail(newIndex).setClassify("F");
                     insertedCount++;
                 }
                 break;
@@ -952,4 +1018,105 @@ public class SalesReservation extends Transaction {
 //        poApPayments = new ArrayList<>();
 //        poCachePayable = new ArrayList<>();
     }
+    
+    public JSONObject validateConfirmedTransactionApproval() {
+        JSONObject loJSON = new JSONObject();
+
+        // Default success
+        loJSON.put("result", "success");
+        loJSON.put("message", "");
+
+        // Only validate if transaction is confirmed
+        if (!Master().getTransactionStatus().equals(Sales_Reservation_Static.CONFIRMED)) {
+            return loJSON; // Not confirmed, skip approval
+        }
+
+        // Ask user if they want to proceed
+        boolean proceed = ShowMessageFX.YesNo(
+                "Updating a confirmed transaction requires system user approval.\n"
+                + "Do you want to proceed?",
+                "Computerized Accounting System",
+                null
+        );
+
+        if (!proceed) {
+            loJSON.put("result", "error");
+            loJSON.put("message", "User cancelled update of confirmed transaction.");
+            return loJSON;
+        }
+
+        // Check if current user level requires higher-level approval
+        if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+            JSONObject approvalJSON = ShowDialogFX.getUserApproval(poGRider);
+
+            if (!"success".equalsIgnoreCase((String) approvalJSON.get("result"))) {
+                return approvalJSON; // Already contains result/message
+            }
+
+            int approvingUserLevel = Integer.parseInt(approvalJSON.get("nUserLevl").toString());
+            if (approvingUserLevel <= UserRight.ENCODER) {
+                loJSON.put("result", "error");
+                loJSON.put("message", "User is not an authorized approving officer.");
+                return loJSON;
+            }
+        }
+        loJSON.put("result", "success");
+        return loJSON; // Passed all checks
+    }
+    
+    public JSONObject callapproval(){
+        JSONObject loJSON = new JSONObject();
+        if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+             loJSON = ShowDialogFX.getUserApproval(poGRider);
+
+            if (!"success".equalsIgnoreCase((String) loJSON.get("result"))) {
+                return loJSON; // Already contains result/message
+            }
+
+            int approvingUserLevel = Integer.parseInt(loJSON.get("nUserLevl").toString());
+            if (approvingUserLevel <= UserRight.ENCODER) {
+                loJSON.put("result", "error");
+                loJSON.put("message", "User is not an authorized approving officer.");
+                return loJSON;
+            }
+        }
+        loJSON.put("result", "success");
+        return loJSON;
+    }
+
+    public JSONObject checkExistingTrans(String sourceCode, String sourceNo) throws SQLException {
+        JSONObject loJSON = new JSONObject();
+
+        // Return success immediately if either parameter is null or empty
+        if (sourceCode == null || sourceCode.isEmpty() || sourceNo == null || sourceNo.isEmpty()) {
+            loJSON.put("result", "success");
+            return loJSON;
+        }
+
+        String lsSQL = "SELECT sTransNox FROM sales_reservation_master WHERE "
+                + "sBranchCd = " + SQLUtil.toSQL(Master().getBranchCode()) + " AND "
+                + "sSourceNo = '" + sourceNo + "' AND "
+                + "sSourceCd = '" + sourceCode + "' AND "
+                + "cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
+                + "ORDER BY sTransNox DESC LIMIT 1";
+
+        ResultSet loRS = null;
+
+        try {
+            System.out.println("EXECUTING SQL :  " + lsSQL);
+            loRS = poGRider.executeQuery(lsSQL);
+            System.out.println("VALUE OF Lors : " + loRS.toString());
+            if (loRS != null && loRS.next()) {
+                loJSON.put("result", "error");
+                loJSON.put("message", "Sales Reservation cannot be confirmed because the reservation source is already in use.");
+                return loJSON;
+            }
+
+        } finally {
+            MiscUtil.close(loRS);
+        }
+        loJSON.put("result", "success");
+        return loJSON;
+    }
+
 }
