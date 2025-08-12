@@ -96,10 +96,10 @@ public class Sales_Reservation_Validator_Vehicle implements GValidator{
             return poJSON;
         }
         
-        if (poMaster.getContactID()== null || poMaster.getContactID().isEmpty()) {
-            poJSON.put("message", "Contact is missing or not set.");
-            return poJSON;
-        }
+//        if (poMaster.getContactID()== null || poMaster.getContactID().isEmpty()) {
+//            poJSON.put("message", "Contact is missing or not set.");
+//            return poJSON;
+//        }
         
         poJSON.put("result", "success");
         return poJSON;
@@ -138,10 +138,10 @@ public class Sales_Reservation_Validator_Vehicle implements GValidator{
             return poJSON;
         }
         
-        if (poMaster.getContactID()== null || poMaster.getContactID().isEmpty()) {
-            poJSON.put("message", "Contact is missing or not set.");
-            return poJSON;
-        }
+//        if (poMaster.getContactID()== null || poMaster.getContactID().isEmpty()) {
+//            poJSON.put("message", "Contact is missing or not set.");
+//            return poJSON;
+//        }
         poJSON.put("result", "success");
         return poJSON;
     }
