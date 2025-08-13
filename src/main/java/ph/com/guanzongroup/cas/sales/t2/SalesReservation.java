@@ -41,6 +41,7 @@ public class SalesReservation extends Transaction {
     List<Model_Sales_Reservation_Master> poSalesReservationMaster;
   
     List<Model> paDetailRemoved;
+    SalesInquiry salesInquiry = new SalesControllers(poGRider, logwrapr).SalesInquiry();
     public JSONObject InitTransaction() throws SQLException, GuanzonException {
         SOURCE_CODE = "srsv";
 
@@ -276,10 +277,10 @@ public class SalesReservation extends Transaction {
                 }
             }
         }
-//        poJSON = setValueToOthers(lsStatus);
-//        if (!"success".equals((String) poJSON.get("result"))) {
-//            return poJSON;
-//        }
+        poJSON = setProcessSource(Sales_Reservation_Static.Source.source_inquiry, Master().getSourceNo());
+        if (!"success".equals((String) poJSON.get("result"))) {
+            return poJSON;
+        }
         //check  the user level again then if he/she allow to approve
         poGRider.beginTrans("UPDATE STATUS", "ConfirmTransaction", SOURCE_CODE, Master().getTransactionNo());
 
@@ -288,11 +289,11 @@ public class SalesReservation extends Transaction {
             poGRider.rollbackTrans();
             return poJSON;
         }
-//        poJSON = saveUpdates(PurchaseOrderStatus.CONFIRMED);
-//        if (!"success".equals((String) poJSON.get("result"))) {
-//            poGRider.rollbackTrans();
-//            return poJSON;
-//        }
+        poJSON = saveProcessSource(Sales_Reservation_Static.Source.source_inquiry,Sales_Reservation_Static.CONFIRMED);
+        if (!"success".equals((String) poJSON.get("result"))) {
+            poGRider.rollbackTrans();
+            return poJSON;
+        }
 
         poGRider.commitTrans();
 
@@ -1117,6 +1118,77 @@ public class SalesReservation extends Transaction {
         }
         loJSON.put("result", "success");
         return loJSON;
+    }
+    
+    private JSONObject setProcessSource(String source, String transactionNo )
+            throws GuanzonException,
+            SQLException,
+            CloneNotSupportedException {
+            poJSON = new JSONObject();
+        switch (source) {
+            case Sales_Reservation_Static.Source.source_inquiry:
+                 
+                 poJSON = salesInquiry.InitTransaction();
+                 poJSON = salesInquiry.OpenTransaction(transactionNo);
+                    if(!"success".equals(poJSON.get("result"))){
+                     String message = (String) poJSON.get("message");
+                     poJSON.put("result", "error");
+                     poJSON.put("message", message);
+                     return poJSON;
+                    }
+                 poJSON = salesInquiry.UpdateTransaction();
+                  if(!"success".equals(poJSON.get("result"))){
+                     String message = (String) poJSON.get("message");
+                     poJSON.put("result", "error");
+                     poJSON.put("message", message);
+                     return poJSON;
+                    }
+                 
+                 break;
+            case Sales_Reservation_Static.Source.source_qoutation:
+                ShowMessageFX.Error(
+                        "This feature is currently disabled because its core object is not yet implemented.",
+                        "Feature Under Development",
+                        null
+                );
+                break;
+            default:
+                throw new AssertionError();
+        }
+         poJSON.put("result", "success");
+         return poJSON;
+    }
+    private JSONObject saveProcessSource(String source, String status)
+            throws GuanzonException,
+            SQLException,
+            CloneNotSupportedException {
+            poJSON = new JSONObject();
+        switch (source) {
+            case Sales_Reservation_Static.Source.source_inquiry:
+                
+                 salesInquiry.Master().isProcessed(true);
+                 
+                 poJSON = salesInquiry.SaveTransaction();
+                  if(!"success".equals(poJSON.get("result"))){
+                     String message = (String) poJSON.get("message");
+                     poJSON.put("result", "error");
+                     poJSON.put("message", message);
+                     return poJSON;
+                    }
+                  
+                 break;
+            case Sales_Reservation_Static.Source.source_qoutation:
+                ShowMessageFX.Error(
+                        "This feature is currently disabled because its core object is not yet implemented.",
+                        "Feature Under Development",
+                        null
+                );
+                break;
+            default:
+                throw new AssertionError();
+        }
+         poJSON.put("result", "success");
+         return poJSON;
     }
 
 }
