@@ -953,7 +953,7 @@ public class SalesReservation extends Transaction {
 
         initSQL();
         String lsFilterCondition = String.join(" AND ", "a.sIndstCdx = " + SQLUtil.toSQL(Master().getIndustryID()),
-                " a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID()),
+                " a.sCategrCd = " + SQLUtil.toSQL(psCategoryCd),
                 " a.sClientID LIKE " + SQLUtil.toSQL("%" + fsCustomer),
                 " a.sTransNox  LIKE " + SQLUtil.toSQL("%" + fsTransactionNo),
                 " a.sBranchCd = " + SQLUtil.toSQL(poGRider.getBranchCode()));
