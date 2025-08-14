@@ -41,12 +41,13 @@ public class SalesReservation extends Transaction {
     List<Model_Sales_Reservation_Master> poSalesReservationMaster;
   
     List<Model> paDetailRemoved;
-    SalesInquiry salesInquiry = new SalesControllers(poGRider, logwrapr).SalesInquiry();
+    SalesInquiry salesInquiry;
     public JSONObject InitTransaction() throws SQLException, GuanzonException {
         SOURCE_CODE = "srsv";
 
         poMaster = new SalesReservationModels(poGRider).Sales_Reservation_Master();
         poDetail = new SalesReservationModels(poGRider).Sales_Reservation_Detail();
+        salesInquiry = new SalesControllers(poGRider, logwrapr).SalesInquiry();
         paDetail = new ArrayList<>();
         return initialize();
     }
