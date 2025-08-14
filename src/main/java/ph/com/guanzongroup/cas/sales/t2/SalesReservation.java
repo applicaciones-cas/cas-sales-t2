@@ -216,11 +216,21 @@ public class SalesReservation extends Transaction {
                 }
             }
         }
-
+        poJSON = setProcessSource(Sales_Reservation_Static.Source.source_inquiry, Master().getSourceNo());
+        if (!"success".equals((String) poJSON.get("result"))) {
+            return poJSON;
+        }
+        
         //check  the user level again then if he/she allow to approve
         poGRider.beginTrans("UPDATE STATUS", "VoidTransaction", SOURCE_CODE, Master().getTransactionNo());
 
         poJSON = statusChange(poMaster.getTable(), (String) poMaster.getValue("sTransNox"), remarks, lsStatus, !lbConfirm, true);
+        if (!"success".equals((String) poJSON.get("result"))) {
+            poGRider.rollbackTrans();
+            return poJSON;
+        }
+        
+        poJSON = saveProcessSource(Sales_Reservation_Static.Source.source_inquiry,Sales_Reservation_Static.CONFIRMED);
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
             return poJSON;
@@ -642,6 +652,71 @@ public class SalesReservation extends Transaction {
                 "a.dTransact»a.sTransNox»d.sCompnyNm»c.sBranchNm",
                 "a.dTransact»a.sTransNox»d.sCompnyNm»ecsBranchNm",
                 1);
+
+        if (poJSON != null) {
+            return OpenTransaction((String) poJSON.get("sTransNox"));
+        } else {
+            poJSON = new JSONObject();
+            poJSON.put("result", "error");
+            poJSON.put("message", "No record loaded.");
+            return poJSON;
+        }
+    }
+    public JSONObject SearchTransactionbyFilter(String fsValue, boolean fsByCode) throws CloneNotSupportedException, SQLException, GuanzonException {
+        poJSON = new JSONObject();
+        String lsTransStat = "";
+        String lsBranch = "";
+        if (psTranStat.length() > 1) {
+            for (int lnCtr = 0; lnCtr <= psTranStat.length() - 1; lnCtr++) {
+                lsTransStat += ", " + SQLUtil.toSQL(Character.toString(psTranStat.charAt(lnCtr)));
+            }
+            lsTransStat = " AND a.cTranStat IN (" + lsTransStat.substring(2) + ")";
+        } else {
+            lsTransStat = " AND a.cTranStat = " + SQLUtil.toSQL(psTranStat);
+        }
+
+        initSQL();
+        String lsFilterCondition = String.join(" AND ", "a.sIndstCdx = " + SQLUtil.toSQL(Master().getIndustryID()),
+                " a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID()),
+                " a.sCategrCd LIKE " + SQLUtil.toSQL("%" + Master().getCategoryCode()));
+        
+        String lsSQL = MiscUtil.addCondition(SQL_BROWSE, lsFilterCondition);
+        
+        
+        if (fsByCode) {
+            if (!fsValue.isEmpty()){
+             lsSQL = lsSQL +  " AND a.sTransNox = " + SQLUtil.toSQL(fsValue);
+            }else{
+             lsSQL = lsSQL +  "  AND a.sTransNox LIKE '%' ";
+            }
+        } else {
+            if (!fsValue.isEmpty()){
+             lsSQL = lsSQL +  " AND d.sCompnyNm LIKE " + SQLUtil.toSQL("%"+fsValue);
+            }else{
+              lsSQL = lsSQL +  " AND d.sCompnyNm LIKE '%'";
+            }
+        }
+       
+        
+        
+        
+        
+        if (!psTranStat.isEmpty()) {
+            lsSQL = lsSQL + lsTransStat;
+        }
+        if (!poGRider.isMainOffice() || !poGRider.isWarehouse()) {
+            lsSQL = lsSQL + " AND a.sBranchCd LIKE " + SQLUtil.toSQL(poGRider.getBranchCode());
+        }
+
+        lsSQL = lsSQL + " GROUP BY a.sTransNox";
+        System.out.println("SQL EXECUTED: " + lsSQL);
+        poJSON = ShowDialogFX.Browse(poGRider,
+                lsSQL,
+                fsValue,
+                "Transaction Date»Transaction No»Customer Name»Branch",
+                "a.dTransact»a.sTransNox»d.sCompnyNm»c.sBranchNm",
+                "a.dTransact»a.sTransNox»d.sCompnyNm»ecsBranchNm",
+                fsByCode ? 1 : 2);
 
         if (poJSON != null) {
             return OpenTransaction((String) poJSON.get("sTransNox"));
@@ -1166,9 +1241,15 @@ public class SalesReservation extends Transaction {
             poJSON = new JSONObject();
         switch (source) {
             case Sales_Reservation_Static.Source.source_inquiry:
+                switch (status) {
+                    case Sales_Reservation_Static.CONFIRMED:
+                        salesInquiry.Master().isProcessed(true);
+                        break;
+                    case Sales_Reservation_Static.VOID:
+                        salesInquiry.Master().isProcessed(false);
+                        break;
+                }
                 
-                 salesInquiry.Master().isProcessed(true);
-                 
                  poJSON = salesInquiry.SaveTransaction();
                   if(!"success".equals(poJSON.get("result"))){
                      String message = (String) poJSON.get("message");
