@@ -1,4 +1,4 @@
-package ph.com.guanzongroup.cas.sales.status;
+package ph.com.guanzongroup.cas.sales.constant;
 
 public class Sales_Reservation_Static {
         

@@ -6,7 +6,7 @@ import org.guanzon.appdriver.iface.GValidator;
 import org.json.simple.JSONObject;
 import ph.com.guanzongroup.cas.sales.model.Model_Sales_Reservation_Detail;
 import ph.com.guanzongroup.cas.sales.model.Model_Sales_Reservation_Master;
-import ph.com.guanzongroup.cas.sales.status.Sales_Reservation_Static;
+import ph.com.guanzongroup.cas.sales.constant.Sales_Reservation_Static;
 
 public class Sales_Reservation_Validator_MC implements GValidator{
     GRiderCAS poGrider;

@@ -19,7 +19,7 @@ import org.guanzon.cas.parameter.model.Model_Model;
 import org.guanzon.cas.parameter.model.Model_Tax_Code;
 import org.guanzon.cas.parameter.services.ParamModels;
 import org.json.simple.JSONObject;
-import ph.com.guanzongroup.cas.sales.status.Sales_Reservation_Static;
+import ph.com.guanzongroup.cas.sales.constant.Sales_Reservation_Static;
 
 /**
  *

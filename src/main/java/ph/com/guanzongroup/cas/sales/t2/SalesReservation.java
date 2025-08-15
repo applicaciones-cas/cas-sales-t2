@@ -31,7 +31,7 @@ import org.json.simple.parser.ParseException;
 import ph.com.guanzongroup.cas.sales.model.Model_Sales_Reservation_Detail;
 import ph.com.guanzongroup.cas.sales.model.Model_Sales_Reservation_Master;
 import ph.com.guanzongroup.cas.sales.services.SalesReservationModels;
-import ph.com.guanzongroup.cas.sales.status.Sales_Reservation_Static;
+import ph.com.guanzongroup.cas.sales.constant.Sales_Reservation_Static;
 import ph.com.guanzongroup.cas.sales.t1.SalesInquiry;
 import ph.com.guanzongroup.cas.sales.t1.services.SalesControllers;
 import ph.com.guanzongroup.cas.sales.validator.Sales_Reservation_Validator_Factory;
@@ -853,11 +853,13 @@ public class SalesReservation extends Transaction {
                     + " 'Inquiry' AS source, "
                     + " a.sIndstCdx AS Industry, "    
                     + " a.sCompnyID AS Company "
+                    + " a.sCategrCd AS Category "
                     + " FROM sales_inquiry_master a "
                     + " WHERE a.cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
                     + " AND a.cProcessd = '" + Sales_Reservation_Static.OPEN + "' "
                     + " AND a.sIndstCdx = '" + Master().getIndustryID() + "' "
                     + " AND a.sCompnyID = '" + Master().getCompanyID() + "'"
+                    + " AND a.sCategrCd = '" + Master().getCategoryCode() + "'"
                     + " AND a.sClientID LIKE '" + (Master().getClientID() == null || Master().getClientID().isEmpty() ? "%" : Master().getClientID()) + "'"
             );
             hasCondition = true;
@@ -872,10 +874,12 @@ public class SalesReservation extends Transaction {
                     + " 'Qoutation' AS source, "
                     + " b.sIndstCdx AS Industry, "
                     + " b.sCompnyID AS Company "
+                    + " b.sCategrCd AS Category "
                     + " FROM sales_quotation_master b "
                     + " WHERE b.cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
                     + " AND b.sIndstCdx = '" + psIndustryId + "' "
                     + " AND b.sCompnyID = '" + Master().getCompanyID() + "'"
+                    + " AND b.sCategrCd = '" + Master().getCategoryCode() + "'"
                     + " AND b.sClientID LIKE '" +  (Master().getClientID() == null || Master().getClientID().isEmpty() ? "%" : Master().getClientID()) + "'"
             );
             hasCondition = true;
@@ -1270,6 +1274,18 @@ public class SalesReservation extends Transaction {
                 throw new AssertionError();
         }
          poJSON.put("result", "success");
+         return poJSON;
+    }
+    private JSONObject ComputeAmount(double quantity, double minimumDP)
+            throws GuanzonException,
+            SQLException,
+            CloneNotSupportedException {
+            poJSON = new JSONObject();
+            
+            double TotalComputed = quantity * minimumDP;
+            
+         poJSON.put("result", "success");
+         poJSON.put("totalComputed", TotalComputed);
          return poJSON;
     }
 
