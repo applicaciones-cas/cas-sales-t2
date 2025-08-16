@@ -603,7 +603,6 @@ public class SalesReservation extends Transaction {
                 + ", sales_reservation_detail b ";
     }
 
-
     public JSONObject SearchTransaction(String fsValue) throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsTransStat = "";
@@ -852,7 +851,7 @@ public class SalesReservation extends Transaction {
                     + " a.dTransact, "
                     + " 'Inquiry' AS source, "
                     + " a.sIndstCdx AS Industry, "    
-                    + " a.sCompnyID AS Company "
+                    + " a.sCompnyID AS Company, "
                     + " a.sCategrCd AS Category "
                     + " FROM sales_inquiry_master a "
                     + " WHERE a.cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
@@ -873,7 +872,7 @@ public class SalesReservation extends Transaction {
                     + " b.dTransact, "
                     + " 'Qoutation' AS source, "
                     + " b.sIndstCdx AS Industry, "
-                    + " b.sCompnyID AS Company "
+                    + " b.sCompnyID AS Company, "
                     + " b.sCategrCd AS Category "
                     + " FROM sales_quotation_master b "
                     + " WHERE b.cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
@@ -962,17 +961,18 @@ public class SalesReservation extends Transaction {
                 for (int i = 0; i < detailCount; i++) {
                     String salesStockId = salesInquiry.Detail(i).getStockId();
 
+                    
+                    if(salesInquiry.Detail(i).getStockId() == null || salesInquiry.Detail(i).getStockId().isEmpty()){
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Stock ID is not yet available");
+                        return poJSON;
+                    }
                     for (int j = 0; j < getDetailCount(); j++) {
                         if (salesStockId.equals(Detail(j).getStockID())) {
                             poJSON.put("result", "error");
                             poJSON.put("message", "Stock ID is already exist in the detail");
                             return poJSON;
                         }
-                    }
-                    if(salesInquiry.Detail(i).getStockId() == null || salesInquiry.Detail(i).getStockId().isEmpty()){
-                        poJSON.put("result", "error");
-                        poJSON.put("message", "Stock ID is not yet available");
-                        return poJSON;
                     }
                     if (!Master().getSourceNo().isEmpty()){
                         if (!Master().getSourceNo().equals(salesInquiry.Master().getTransactionNo())){
