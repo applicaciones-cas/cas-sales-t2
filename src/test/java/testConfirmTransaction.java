@@ -41,7 +41,7 @@ public class testConfirmTransaction {
                 Assert.fail();
             }
 
-            loJSON = poSalesReservation.SalesReservation().OpenTransaction("M00125000001");
+            loJSON = poSalesReservation.SalesReservation().OpenTransaction("M00125000002");
             if (!"success".equals((String) loJSON.get("result"))) {
                 System.err.println((String) loJSON.get("message"));
                 Assert.fail();
