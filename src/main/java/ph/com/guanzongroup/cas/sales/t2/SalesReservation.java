@@ -185,6 +185,7 @@ public class SalesReservation extends Transaction {
 
         String lsStatus = Sales_Reservation_Static.VOID;
         boolean lbConfirm = true;
+        String source = Master().getSourceNo();
 
         if (getEditMode() != EditMode.READY) {
             poJSON.put("result", "error");
@@ -216,9 +217,11 @@ public class SalesReservation extends Transaction {
                 }
             }
         }
-        poJSON = setProcessSource(Sales_Reservation_Static.Source.source_inquiry, Master().getSourceNo());
-        if (!"success".equals((String) poJSON.get("result"))) {
-            return poJSON;
+        if (!source.isEmpty()) {
+            poJSON = setProcessSource(Sales_Reservation_Static.Source.source_inquiry, Master().getSourceNo());
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
         }
         
         //check  the user level again then if he/she allow to approve
@@ -229,11 +232,12 @@ public class SalesReservation extends Transaction {
             poGRider.rollbackTrans();
             return poJSON;
         }
-        
-        poJSON = saveProcessSource(Sales_Reservation_Static.Source.source_inquiry,Sales_Reservation_Static.CONFIRMED);
-        if (!"success".equals((String) poJSON.get("result"))) {
-            poGRider.rollbackTrans();
-            return poJSON;
+        if (!source.isEmpty()) {
+            poJSON = saveProcessSource(Sales_Reservation_Static.Source.source_inquiry, Sales_Reservation_Static.CONFIRMED);
+            if (!"success".equals((String) poJSON.get("result"))) {
+                poGRider.rollbackTrans();
+                return poJSON;
+            }
         }
         
         poGRider.commitTrans();
@@ -257,6 +261,7 @@ public class SalesReservation extends Transaction {
 
         String lsStatus = Sales_Reservation_Static.CONFIRMED;
         boolean lbConfirm = true;
+        String source = Master().getSourceNo();
 
         if (getEditMode() != EditMode.READY) {
             poJSON.put("result", "error");
@@ -288,9 +293,12 @@ public class SalesReservation extends Transaction {
                 }
             }
         }
-        poJSON = setProcessSource(Sales_Reservation_Static.Source.source_inquiry, Master().getSourceNo());
-        if (!"success".equals((String) poJSON.get("result"))) {
-            return poJSON;
+        
+        if (!source.isEmpty()) {
+            poJSON = setProcessSource(Sales_Reservation_Static.Source.source_inquiry, Master().getSourceNo());
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
         }
         //check  the user level again then if he/she allow to approve
         poGRider.beginTrans("UPDATE STATUS", "ConfirmTransaction", SOURCE_CODE, Master().getTransactionNo());
@@ -300,12 +308,14 @@ public class SalesReservation extends Transaction {
             poGRider.rollbackTrans();
             return poJSON;
         }
-        poJSON = saveProcessSource(Sales_Reservation_Static.Source.source_inquiry,Sales_Reservation_Static.CONFIRMED);
-        if (!"success".equals((String) poJSON.get("result"))) {
-            poGRider.rollbackTrans();
-            return poJSON;
+        if (!source.isEmpty()) {
+            salesInquiry.getEditMode();
+            poJSON = saveProcessSource(Sales_Reservation_Static.Source.source_inquiry, Sales_Reservation_Static.CONFIRMED);
+            if (!"success".equals((String) poJSON.get("result"))) {
+                poGRider.rollbackTrans();
+                return poJSON;
+            }
         }
-
         poGRider.commitTrans();
 
         poJSON = new JSONObject();
@@ -791,7 +801,6 @@ public class SalesReservation extends Transaction {
 
     @Override
     public JSONObject saveOthers() {
-        
         poJSON.put("result", "success");
         return poJSON;
     }
@@ -1224,6 +1233,7 @@ public class SalesReservation extends Transaction {
                      return poJSON;
                     }
                  
+                 salesInquiry.getEditMode();
                  break;
             case Sales_Reservation_Static.Source.source_qoutation:
                 ShowMessageFX.Error(
@@ -1243,6 +1253,7 @@ public class SalesReservation extends Transaction {
             SQLException,
             CloneNotSupportedException {
             poJSON = new JSONObject();
+            
         switch (source) {
             case Sales_Reservation_Static.Source.source_inquiry:
                 switch (status) {
@@ -1253,7 +1264,7 @@ public class SalesReservation extends Transaction {
                         salesInquiry.Master().isProcessed(false);
                         break;
                 }
-                
+                salesInquiry.setWithParent(true);
                  poJSON = salesInquiry.SaveTransaction();
                   if(!"success".equals(poJSON.get("result"))){
                      String message = (String) poJSON.get("message");
