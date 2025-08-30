@@ -94,7 +94,100 @@ public class SalesReservation extends Transaction {
     public JSONObject NewTransaction() throws CloneNotSupportedException {
         return newTransaction();
     }
-
+  private boolean hasRightToSave() {
+    return true;
+  }
+  
+    protected JSONObject saveTransaction() throws CloneNotSupportedException, SQLException, GuanzonException {
+    this.poJSON = new JSONObject();
+    if (!this.pbInitTran) {
+      this.poJSON.put("result", "error");
+      this.poJSON.put("message", "Object is not initialized.");
+      return this.poJSON;
+    } 
+    if (this.pnEditMode == 1) {
+      this.poJSON.put("result", "error");
+      this.poJSON.put("message", "Saving of unmodified transaction is not allowed.");
+      return this.poJSON;
+    } 
+    if (!hasRightToSave()) {
+      this.poJSON.put("result", "error");
+      this.poJSON.put("message", "User has no right to save.");
+      return this.poJSON;
+    } 
+    this.poJSON = willSave();
+    if ("error".equals(this.poJSON.get("result")))
+      return this.poJSON; 
+    if (getEditMode() == 0) {
+      this.pdModified = this.poGRider.getServerDate();
+      this.poMaster.setValue("sModified", this.poGRider.Encrypt(this.poGRider.getUserID()));
+    } 
+    if (!this.pbWthParent)
+      this.poGRider.beginTrans((String)this.poEvent.get("event"), this.poMaster
+          .getTable(), this.SOURCE_CODE, String.valueOf(this.poMaster.getValue(1))); 
+    this.poJSON = save();
+    if ("success".equals(this.poJSON.get("result"))) {
+      if (this.pbVerifyEntryNo)
+        this.poMaster.setValue("nEntryNox", Integer.valueOf(this.paDetail.size())); 
+      if (this.pnEditMode == 0 || this.pnEditMode == 2) {
+        this.poMaster.setValue("dModified", this.pdModified);
+        this.poJSON = this.poMaster.saveRecord();
+        if ("error".equals(this.poJSON.get("result"))) {
+          if (!this.pbWthParent)
+            this.poGRider.rollbackTrans(); 
+          return this.poJSON;
+        } 
+        for (int lnCtr = 0; lnCtr <= this.paDetail.size() - 1; lnCtr++) {
+          ((Model)this.paDetail.get(lnCtr)).setValue("dModified", this.pdModified);
+          this.poJSON = ((Model)this.paDetail.get(lnCtr)).saveRecord();
+          if ("error".equals(this.poJSON.get("result"))) {
+            if (!this.pbWthParent)
+              this.poGRider.rollbackTrans(); 
+            return this.poJSON;
+          } 
+        } 
+        if (this.pnEditMode == 2) {
+          String lsSQL = "SELECT * FROM " + this.poDetail.getTable() + " WHERE sTransNox = " + SQLUtil.toSQL(this.poMaster.getValue("sTransNox")) + " AND nEntryNox > " + this.paDetail.size();
+          ResultSet loRS = this.poGRider.executeQuery(lsSQL);
+          if (loRS.next()) {
+            lsSQL = "DELETE FROM " + this.poDetail.getTable() + " WHERE sTransNox = " + SQLUtil.toSQL(this.poMaster.getValue("sTransNox")) + " AND nEntryNox > " + this.paDetail.size();
+            if (this.poGRider.executeQuery(lsSQL, this.poDetail.getTable(), this.psBranchCode, this.psDestination, "") <= 0L) {
+              if (!this.pbWthParent)
+                this.poGRider.rollbackTrans(); 
+              this.poJSON.put("result", "error");
+              this.poJSON.put("message", "Unable to remove old records.");
+              return this.poJSON;
+            } 
+          } 
+        } 
+      } else {
+        this.poJSON.put("result", "error");
+        this.poJSON.put("message", "Edit mode is not allowed to save transaction.");
+        return this.poJSON;
+      } 
+    } else {
+      if (!this.pbWthParent)
+        this.poGRider.rollbackTrans(); 
+      return this.poJSON;
+    } 
+    this.poJSON = saveOthers();
+    if ("error".equals(this.poJSON.get("result"))) {
+      if (!this.pbWthParent)
+        this.poGRider.rollbackTrans(); 
+      return this.poJSON;
+    } 
+    if (!this.pbWthParent)
+      this.poGRider.commitTrans(); 
+    saveComplete();
+    this.pnEditMode = -1;
+    this.pbRecordExist = true;
+    this.poJSON = new JSONObject();
+    this.poJSON.put("result", "success");
+    this.poJSON.put("message", "Transaction saved successfully.");
+    return this.poJSON;
+  }
+    
+    
     public JSONObject SaveTransaction() throws SQLException, GuanzonException, CloneNotSupportedException {
         return saveTransaction();
     }
@@ -106,6 +199,23 @@ public class SalesReservation extends Transaction {
         return openTransaction(transactionNo);
     }
 
+    
+      protected JSONObject updateTransaction() {
+    this.poJSON = new JSONObject();
+    if (this.pnEditMode != 1) {
+      this.poJSON.put("result", "error");
+      this.poJSON.put("message", "No transacton was loaded.");
+    } else {
+      this.poJSON.put("result", "success");
+    } 
+    this.poMaster.updateRecord();
+    for (Model detail : this.paDetail)
+      detail.updateRecord(); 
+    this.poEvent = new JSONObject();
+    this.poEvent.put("event", "UPDATE");
+    this.pnEditMode = 2;
+    return this.poJSON;
+  }
     public JSONObject UpdateTransaction() {
         return updateTransaction();
     }
@@ -781,6 +891,8 @@ public class SalesReservation extends Transaction {
             }
         }
         
+        
+        
         for (int lnCtr = 0; lnCtr <= getDetailCount() - 1; lnCtr++) {
            Detail(lnCtr).setTransactionNo(Master().getTransactionNo());
            Detail(lnCtr).setEntryNo(lnCtr + 1);
@@ -815,24 +927,40 @@ public class SalesReservation extends Transaction {
     public JSONObject validateDetails() {
         poJSON = new JSONObject();
         int detailCount = getDetailCount();
+
         if (detailCount == 0) {
             poJSON.put("result", "error");
             poJSON.put("message", "Reservation cannot be saved without any detail. Please add an item.");
             return poJSON;
-        }  
-        for (int lnCtr = 0; lnCtr <= getDetailCount() - 1; lnCtr++) {
+        }
+
+        boolean allZeroQty = true;
+
+        for (int i = 0; i < detailCount; i++) {
+            // Directly use Detail(i) since we are inside the same class
             if (detailCount == 1) {
-                if (Detail(lnCtr).getStockID() == null || Detail(lnCtr).getStockID().isEmpty() || Detail(lnCtr).getQuantity() > 0.00) {
+                if (Detail(i).getStockID() == null || Detail(i).getStockID().isEmpty()) {
                     poJSON.put("result", "error");
-                    poJSON.put("message", "Error: Please verify Stock ID");
+                    poJSON.put("message", "Reservation cannot be saved. Please verify Stock ID.");
                     return poJSON;
                 }
             }
+
+            if (Detail(i).getQuantity() > 0) {
+                allZeroQty = false; // at least one valid quantity
+            }
         }
-        
+
+        if (allZeroQty) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "Reservation cannot be saved with all details having zero quantity.");
+            return poJSON;
+        }
+
         poJSON.put("result", "success");
         return poJSON;
     }
+
     
     @Override
     protected JSONObject isEntryOkay(String status) {
@@ -969,7 +1097,8 @@ public class SalesReservation extends Transaction {
 
                 for (int i = 0; i < detailCount; i++) {
                     String salesStockId = salesInquiry.Detail(i).getStockId();
-
+                    String salesSourceNo = salesInquiry.Detail(i).getTransactionNo();
+                    String salesSourcecode = salesInquiry.getSourceCode();
                     
                     if(salesInquiry.Detail(i).getStockId() == null || salesInquiry.Detail(i).getStockId().isEmpty()){
                         poJSON.put("result", "error");
@@ -977,7 +1106,9 @@ public class SalesReservation extends Transaction {
                         return poJSON;
                     }
                     for (int j = 0; j < getDetailCount(); j++) {
-                        if (salesStockId.equals(Detail(j).getStockID())) {
+                        if (salesStockId.equals(Detail(j).getStockID()) &&
+                                salesSourceNo.equals(Master().getSourceNo()) && 
+                                salesSourcecode.equals(Master().getSourceNo())) {
                             poJSON.put("result", "error");
                             poJSON.put("message", "Stock ID is already exist in the detail");
                             return poJSON;
