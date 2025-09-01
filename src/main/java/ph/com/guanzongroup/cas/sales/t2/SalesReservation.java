@@ -874,14 +874,14 @@ public class SalesReservation extends Transaction {
         while (detail.hasNext()) {
             Model item = detail.next();
             Object quantityObj = item.getValue("nQuantity");
-            Object stockIDObj = item.getValue("sStockIDx");
+//            Object stockIDObj = item.getValue("sStockIDx");
 
             // Check if the values are not null
-            if (quantityObj != null && stockIDObj != null) {
+            if (quantityObj != null ) {
                 double quantity = ((Number) quantityObj).doubleValue();
-                String stockID = (String) stockIDObj;
+//                String stockID = (String) stockIDObj;
                 
-                if (stockID.isEmpty() || quantity <= 0.00) {
+                if ( quantity <= 0.00) {
                     detail.remove();
                 }
                 
@@ -939,12 +939,25 @@ public class SalesReservation extends Transaction {
         for (int i = 0; i < detailCount; i++) {
             // Directly use Detail(i) since we are inside the same class
             if (detailCount == 1) {
-                if (Detail(i).getStockID() == null || Detail(i).getStockID().isEmpty()) {
+                double quantity = Detail(i).getQuantity();
+                String notes = Detail(i).getNotes();
+                String stock = Detail(i).getStockID();
+                
+                // Check for invalid quantity
+                if (quantity <= Sales_Reservation_Static.DefaultValues.default_zero_quantity_double) {
                     poJSON.put("result", "error");
-                    poJSON.put("message", "Reservation cannot be saved. Please verify Stock ID.");
+                    poJSON.put("message", "Reservation cannot be saved. Please verify the quantity.");
                     return poJSON;
                 }
-            }
+                if(stock == null || stock.isEmpty())
+                // Check for missing notes
+                    if (notes == null || notes.trim().isEmpty()) {
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Reservation cannot be saved. Notes are required.");
+                        return poJSON;
+                    }
+                }
+            
 
             if (Detail(i).getQuantity() > 0) {
                 allZeroQty = false; // at least one valid quantity
@@ -1101,9 +1114,11 @@ public class SalesReservation extends Transaction {
                     String salesSourcecode = salesInquiry.getSourceCode();
                     
                     if(salesInquiry.Detail(i).getStockId() == null || salesInquiry.Detail(i).getStockId().isEmpty()){
-                        poJSON.put("result", "error");
-                        poJSON.put("message", "Stock ID is not yet available");
-                        return poJSON;
+//                        poJSON.put("result", "error");
+//                        poJSON.put("message", "Stock ID is not yet available");
+//                        return poJSON;
+                            salesStockId = "";
+                            
                     }
                     for (int j = 0; j < getDetailCount(); j++) {
                         if (salesStockId.equals(Detail(j).getStockID()) &&
@@ -1133,10 +1148,13 @@ public class SalesReservation extends Transaction {
                     
                     AddDetail();
                     int newIndex = getDetailCount() - 1;
-                    Detail(newIndex).setStockID(salesInquiry.Detail(i).getStockId());  
+                    Detail(newIndex).setStockID(salesStockId);  
                     Detail(newIndex).setUnitPrice(salesInquiry.Detail(i).Inventory().getCost().doubleValue());  
                     Detail(newIndex).setMinimumDown(salesInquiry.Detail(i).Inventory().getCost().doubleValue());  
                     Detail(newIndex).setClassify("F");
+                    Detail(newIndex).setNotes(salesInquiry.Detail(i).Model().getDescription() + ", " +
+                            salesInquiry.Detail(i).ModelVariant().getDescription()  + ", " + 
+                            salesInquiry.Detail(i).Color().getDescription()); 
                     insertedCount++;
                 }
                 break;
