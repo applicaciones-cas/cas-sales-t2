@@ -10,7 +10,6 @@ import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
-import org.guanzon.cas.inv.Inventory;
 import org.guanzon.cas.inv.model.Model_Inventory;
 import org.guanzon.cas.inv.services.InvModels;
 import org.guanzon.cas.parameter.model.Model_Brand;
@@ -52,6 +51,7 @@ public class Model_Sales_Reservation_Detail extends Model {
             poEntity.updateObject("nApproved", Sales_Reservation_Static.DefaultValues.default_zero_quantity_double);
             poEntity.updateObject("nIssuedxx", Sales_Reservation_Static.DefaultValues.default_zero_quantity_double);
             poEntity.updateObject("nCancelld", Sales_Reservation_Static.DefaultValues.default_zero_quantity_double);
+            poEntity.updateObject("cReversed", Sales_Reservation_Static.DefaultValues. default_reversed_plus);
 
             //end - assign default values
             poEntity.insertRow();
@@ -170,6 +170,15 @@ public class Model_Sales_Reservation_Detail extends Model {
 
     public String getNotes() {
         return (String) getValue("sNotesxxx");
+    }
+        
+    
+    public JSONObject isReversed(boolean isProcessed) {
+        return setValue("cReversed", isProcessed ? "+" : "-");
+    }
+
+    public boolean isReversed() {
+        return ((String) getValue("cReversed")).equals("+");
     }
     
     public JSONObject setModifiedDate(Date modifiedDate) {

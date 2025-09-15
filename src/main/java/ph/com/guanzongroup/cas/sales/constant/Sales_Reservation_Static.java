@@ -24,6 +24,9 @@ public class Sales_Reservation_Static {
         public static final int default_zero_integer = 0;
         public static final int default_one_integer = 0;
         public static final String default_classify_string = "F";
+        
+        public static final String default_reversed_plus = "+";
+        public static final String default_reversed_minus = "-";
     }
     
     public static class Source {
