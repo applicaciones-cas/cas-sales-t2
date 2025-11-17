@@ -606,12 +606,12 @@ public class SalesReservation extends Transaction {
                 + " c.sBranchNm, "
                 + " a.sClientID, "
                 + " d.sCompnyNm "
-                + " FROM sales_reservation_master a "
-                + " LEFT JOIN branch c ON LEFT(a.sTransNox, 4) = c.sBranchCd "
-                + " LEFT JOIN client_master d ON a.sClientID = d.sClientID "
-                + " LEFT JOIN client_address e ON d.sClientID = e.sClientID "
-                + " LEFT JOIN client_mobile f ON d.sClientID = f.sClientID "
-                + ", sales_reservation_detail b ";
+                + " FROM Sales_Reservation_Master a "
+                + " LEFT JOIN Branch c ON LEFT(a.sTransNox, 4) = c.sBranchCd "
+                + " LEFT JOIN Client_Master d ON a.sClientID = d.sClientID "
+                + " LEFT JOIN Client_Address e ON d.sClientID = e.sClientID "
+                + " LEFT JOIN Client_Mobile f ON d.sClientID = f.sClientID "
+                + ", Sales_Reservation_Detail b ";
     }
 
     public JSONObject SearchTransaction(String fsValue) throws CloneNotSupportedException, SQLException, GuanzonException {
@@ -890,7 +890,7 @@ public class SalesReservation extends Transaction {
                 + " a.sIndstCdx AS Industry, "
                 + " a.sCompnyID AS Company, "
                 + " a.sCategrCd AS Category "
-                + " FROM sales_inquiry_master a "
+                + " FROM Sales_Inquiry_Master a "
                 + " WHERE a.cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
                 + " AND a.cProcessd = '" + Sales_Reservation_Static.OPEN + "' "
                 + " AND a.sIndstCdx = '" + Master().getIndustryID() + "' "
@@ -911,7 +911,7 @@ public class SalesReservation extends Transaction {
                 + " b.sIndstCdx AS Industry, "
                 + " b.sCompnyID AS Company, "
                 + " b.sCategrCd AS Category "
-                + " FROM sales_quotation_master b "
+                + " FROM Sales_Quotation_Master b "
                 + " WHERE b.cTranStat = '" + Sales_Reservation_Static.CONFIRMED + "' "
                 + " AND b.sIndstCdx = '" + psIndustryId + "' "
                 + " AND b.sCompnyID = '" + Master().getCompanyID() + "'"
@@ -1228,7 +1228,7 @@ public class SalesReservation extends Transaction {
             return loJSON;
         }
 
-        String lsSQL = "SELECT sTransNox FROM sales_reservation_master WHERE "
+        String lsSQL = "SELECT sTransNox FROM Sales_Reservation_Master WHERE "
                 + "sBranchCd = " + SQLUtil.toSQL(Master().getBranchCode()) + " AND "
                 + "sSourceNo = '" + sourceNo + "' AND "
                 + "sSourceCd = '" + sourceCode + "' AND "
